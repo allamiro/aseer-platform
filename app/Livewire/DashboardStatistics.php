@@ -179,8 +179,11 @@ class DashboardStatistics extends Component
         return $new_users_count=['days_list'=>$days_list,'counts_list'=>$counts_list];
     }
     public function top_domains(){
-
-        return \App\Models\RateLimit::where(function($q){
+        // Get the database connection type
+        $connection = \DB::connection();
+        $driver = $connection->getDriverName();
+        
+        $query = \App\Models\RateLimit::where(function($q){
             if($this->url!=null)
                 $q->where('traffic_landing',$this->url);
             if($this->prev_url!=null)
@@ -190,8 +193,47 @@ class DashboardStatistics extends Component
             if($this->user_id!=null)
                 $q->where('user_id',$this->user_id);
             $q->whereDate('created_at','>=',$this->date_from)->whereDate('created_at','<=',$this->date_to);
-        })->whereNotNull('prev_link')->select(['rate_limits.*',\DB::raw("COUNT(*) AS domain_count,SUBSTRING_INDEX(REPLACE(REPLACE(REPLACE(prev_link,'http://',''),'https://',''),'www.',''),'/',1) AS main_domain")])->orderBy('domain_count','DESC')->groupBy('main_domain')->orderBy('domain_count','DESC')->limit(7)->get();
-
+        })->whereNotNull('prev_link');
+        
+        // Use different SQL functions depending on the database driver
+        if ($driver === 'mysql') {
+            // MySQL version
+            return $query->select(['rate_limits.*',
+                \DB::raw("COUNT(*) AS domain_count, SUBSTRING_INDEX(REPLACE(REPLACE(REPLACE(prev_link,'http://',''),'https://',''),'www.',''),'/',1) AS main_domain")
+            ])->orderBy('domain_count','DESC')->groupBy('main_domain')->limit(7)->get();
+        } else {
+            // SQLite version (or fallback for other DBs)
+            // Process the domains in PHP instead of database
+            $rateLimits = $query->get();
+            
+            // Group and count domains manually
+            $domains = [];
+            foreach ($rateLimits as $rateLimit) {
+                // Clean up the URL to get the domain
+                $url = $rateLimit->prev_link;
+                $url = str_replace(['http://', 'https://', 'www.'], '', $url);
+                $domain = explode('/', $url)[0]; // Get the domain part
+                
+                if (!isset($domains[$domain])) {
+                    $domains[$domain] = [
+                        'domain' => $domain,
+                        'count' => 0
+                    ];
+                }
+                
+                $domains[$domain]['count']++;
+            }
+            
+            // Sort by count
+            uasort($domains, function($a, $b) {
+                return $b['count'] <=> $a['count'];
+            });
+            
+            // Take only 7 items
+            $domains = array_slice($domains, 0, 7);
+            
+            return collect($domains);
+        }
     }
     public function top_countries(){
 
