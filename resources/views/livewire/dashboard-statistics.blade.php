@@ -14,20 +14,6 @@ $flat_colors = collect([
 ]);
 @endphp
 <div class="col-12 p-0">
-    <div class="">
-        {{-- {{dd($data)}} --}}
-    </div>
-    {{-- <div class="col-12 my-2 px-2 ">
-        <div class="col-12  main-box row">
-            <div class="col-12  px-3 py-3 ">
-                @php
-                $from = Carbon::parse($from);
-                $to = Carbon::parse($to);
-                @endphp
-                إحصائيات {{$from->diffInDays($to)}} أيام
-            </div>
-        </div>
-    </div> --}}
     <div class="col-12 row p-0 d-flex">
         <div class="col-12 col-lg-4 p-2">
             
@@ -216,14 +202,28 @@ $flat_colors = collect([
                     <div class="col-12 px-2 py-1 row">
                         <div class="col-4 p-0">
                             <span style="width: 30px;height: 17px;font-weight: bold;background: #0194fe;color: #fff;" class="badge badge-light d-flex align-items-center justify-content-center">
-                                {{$main_domain->domain_count}}
+                                @if(is_object($main_domain) && isset($main_domain->domain_count))
+                                    {{$main_domain->domain_count}}
+                                @elseif(is_array($main_domain) && isset($main_domain['count']))
+                                    {{$main_domain['count']}}
+                                @else
+                                    0
+                                @endif
                             </span>
                             
                         </div>
                         <div class="col-8 text-truncate p-0" style="direction:ltr;font-size: 12px;">
-                            <a href="//{{$main_domain->main_domain}}" target="_blank" style="color:inherit">
-                                <img src="https://icons.duckduckgo.com/ip3/{{$main_domain->main_domain}}.ico" style="width:10px;height: 10px;" class="d-inline-block">
-                                {{$main_domain->main_domain}}
+                            @php
+                                $domain = '';
+                                if(is_object($main_domain) && isset($main_domain->main_domain)) {
+                                    $domain = $main_domain->main_domain;
+                                } elseif(is_array($main_domain) && isset($main_domain['domain'])) {
+                                    $domain = $main_domain['domain'];
+                                }
+                            @endphp
+                            <a href="//{{ $domain }}" target="_blank" style="color:inherit">
+                                <img src="https://icons.duckduckgo.com/ip3/{{ $domain }}.ico" style="width:10px;height: 10px;" class="d-inline-block">
+                                {{ $domain }}
                             </a>
                         </div>
                     </div>
